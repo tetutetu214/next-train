@@ -1,0 +1,11 @@
+# next-train Workers プロキシ設定
+# 実際の ODPT_API_KEY は ~/.secrets/next-train.env から読む運用。
+# デプロイ前に wrangler secret put ODPT_API_KEY でシークレットを設定すること。
+
+name = "next-train-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# ODPT_API_KEY はここに書かず、wrangler secret または .dev.vars で設定する。
+# キーが未設定の場合はモックデータを返す（開発・テスト用）。
