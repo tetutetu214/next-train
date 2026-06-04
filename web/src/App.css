@@ -1,184 +1,300 @@
-.counter {
+/* ===== next-train 発車標(電光掲示板)風スタイル ===== */
+
+.app {
+  padding: 16px 14px 32px;
+}
+
+/* ===== ヘッダー：発車標のタイトルバー ===== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #12151d, #0a0c11);
+}
+
+.app-header h1 {
   font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
-
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--amber);
+  text-shadow: 0 0 12px var(--amber-glow);
 }
 
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
+/* タイトル頭の発車標マーク */
+.app-header h1::before {
+  content: '▸ ';
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green-glow);
 }
 
-#center {
+.refresh-button {
+  font-family: var(--led);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--white);
+  background: #161b25;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 13px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.refresh-button:hover:not(:disabled) {
+  border-color: var(--amber);
+  box-shadow: 0 0 12px var(--amber-glow);
+}
+.refresh-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ===== デモトグル ===== */
+.demo-toggle {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--grey);
+}
+.demo-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.demo-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+
+/* ===== 位置情報ステータス ===== */
+.location-status {
+  margin-bottom: 14px;
+}
+.status-message {
+  font-size: 13px;
+  color: var(--grey);
+  padding: 9px 12px;
+  border-left: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.012);
+}
+.status-message.error {
+  color: var(--alert);
+  border-left-color: var(--alert);
+}
+
+/* ===== 初期の大ボタン ===== */
+.get-location-prompt {
+  margin: 28px 0;
+  text-align: center;
+}
+.get-location-button {
+  font-family: var(--led);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #07080c;
+  background: var(--amber);
+  border: none;
+  border-radius: 8px;
+  padding: 15px 24px;
+  cursor: pointer;
+  box-shadow: 0 0 20px var(--amber-glow);
+  transition: transform 0.15s;
+}
+.get-location-button:active {
+  transform: scale(0.97);
+}
+
+/* ===== 駅リスト ===== */
+.stations-list {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
+  gap: 12px;
+}
 
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
+.no-stations {
+  text-align: center;
+  color: var(--grey);
+  padding: 36px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* ===== 駅カード ===== */
+.station-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 6px 18px rgba(0, 0, 0, 0.4);
+  /* ロード時に上から順に点灯する発車標らしい出現 */
+  animation: board-in 0.4s ease both;
+}
+.station-card:nth-child(2) {
+  animation-delay: 0.06s;
+}
+.station-card:nth-child(3) {
+  animation-delay: 0.12s;
+}
+.station-card:nth-child(4) {
+  animation-delay: 0.18s;
+}
+.station-card:nth-child(5) {
+  animation-delay: 0.24s;
+}
+
+@keyframes board-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-#next-steps {
+.station-header {
   display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
-
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
-
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
-
-  @media (max-width: 1024px) {
-    flex-direction: column;
-    text-align: center;
-  }
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 14px;
+  background: linear-gradient(180deg, var(--panel-head), #0d0f15);
+  border-bottom: 1px solid var(--line-soft);
+}
+.station-mark {
+  color: var(--green);
+  font-size: 11px;
+  text-shadow: 0 0 8px var(--green-glow);
+}
+.station-name {
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.railway-name {
+  margin-left: auto;
+  color: var(--grey);
+  font-size: 12px;
+  letter-spacing: 0.05em;
 }
 
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
+/* ===== 方面ブロック(上り/下り) ===== */
+.direction-block {
   display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
-  }
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 9px;
+  padding: 12px 14px;
+}
+.direction-block + .direction-block {
+  border-top: 1px solid var(--line-soft);
 }
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
-  }
+.direction-label {
+  order: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.direction-name {
+  order: 1;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+/* あと何分：1行目の右端へ */
+.minutes-until {
+  order: 2;
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+/* 発車時刻：2行目の主役(大きいLED数字) */
+.departure-time {
+  order: 3;
+  flex-basis: 100%;
+  margin-top: 3px;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.train-type {
+  order: 4;
+  font-size: 11px;
+  color: var(--grey);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.destination {
+  order: 5;
+  font-size: 13px;
+  color: var(--grey);
+}
+/* ステータス文言(取得中・終電後・データなし) */
+.status-text {
+  order: 3;
+  font-size: 13px;
+  color: var(--grey);
+}
+.status-text.ended {
+  color: var(--alert);
 }
 
-.ticks {
-  position: relative;
-  width: 100%;
+/* --- 上り = アンバーLED --- */
+.direction-block--up .direction-label,
+.direction-block--up .departure-time {
+  color: var(--amber);
+  text-shadow: 0 0 11px var(--amber-glow);
+}
+.direction-block--up .direction-name {
+  color: var(--amber-dim);
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+/* --- 下り = グリーンLED --- */
+.direction-block--down .direction-label,
+.direction-block--down .departure-time {
+  color: var(--green);
+  text-shadow: 0 0 11px var(--green-glow);
+}
+.direction-block--down .direction-name {
+  color: var(--green-dim);
+}
 
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+/* ===== フッター ===== */
+.app-footer {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--grey-dim);
+}
+.app-footer .disclaimer {
+  margin-top: 4px;
+  color: #6f5e3c;
+}
+
+/* ===== モーション抑制設定の尊重 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .station-card {
+    animation: none;
   }
 }

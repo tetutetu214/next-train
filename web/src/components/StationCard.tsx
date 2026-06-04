@@ -41,9 +41,12 @@ function DirectionBlock({
   isLoading: boolean;
   hasTimetable: boolean;
 }) {
+  // 上り(▲)=アンバーLED、下り(▼)=グリーンLED の色分け用クラス
+  const variantClass = label === '▲' ? 'direction-block--up' : 'direction-block--down';
+
   if (isLoading) {
     return (
-      <div className="direction-block">
+      <div className={`direction-block ${variantClass}`}>
         <span className="direction-label">{label}</span>
         <span className="direction-name">{directionName}</span>
         <span className="status-text">データ取得中</span>
@@ -53,7 +56,7 @@ function DirectionBlock({
 
   if (!hasTimetable) {
     return (
-      <div className="direction-block">
+      <div className={`direction-block ${variantClass}`}>
         <span className="direction-label">{label}</span>
         <span className="direction-name">—</span>
         <span className="status-text">近傍データなし</span>
@@ -65,7 +68,7 @@ function DirectionBlock({
 
   if (next.minutesUntil === 'ended') {
     return (
-      <div className="direction-block">
+      <div className={`direction-block ${variantClass}`}>
         <span className="direction-label">{label}</span>
         <span className="direction-name">{directionName}</span>
         <span className="status-text ended">終電を過ぎました</span>

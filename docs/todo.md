@@ -32,3 +32,7 @@
 - [x] 技術調査（事業者範囲・ライセンス・実装要素）
 - [x] 方針決定（メトロ1社 / React+Vite+Workers / キー並行申請）
 - [x] docs骨格作成
+- [x] Codex実装 → Claudeレビュー（祝日/require/proxyの3バグ修正）
+- [x] モックでローカルAPI動作確認（curl 200 OK）
+- [x] GitHub public リポジトリ作成・main push・Secret Scanning有効化
+  - https://github.com/tetutetu214/next-train
