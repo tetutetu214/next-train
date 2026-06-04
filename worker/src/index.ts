@@ -6,6 +6,8 @@
 /** Cloudflare Workers の環境変数型 */
 interface Env {
   ODPT_API_KEY: string;
+  // web/dist のビルド済みフロントを配信するための静的アセットバインディング
+  ASSETS: Fetcher;
 }
 
 /** 駅情報（レスポンス型） */
@@ -464,6 +466,7 @@ export default {
       }
     }
 
-    return errorResponse('Not Found', 404);
+    // /api 以外はビルド済みフロント(静的アセット)を配信する
+    return env.ASSETS.fetch(request);
   },
 };

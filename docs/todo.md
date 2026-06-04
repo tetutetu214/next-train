@@ -19,10 +19,12 @@
 - [x] 単体テスト（距離計算・次発抽出・カレンダー判定）20件パス
 - [x] 型チェック（web/worker とも tsc 通過）
 - [x] vite dev の /api proxy 設定
-- [ ] ローカル動作確認（wrangler dev + vite dev でモック表示）
-- [ ] APIキー到着後、実データ差し替え・動作確認
+- [x] ローカル動作確認（wrangler dev + vite dev でモック表示）
+- [x] 発車標風ダークLEDデザイン（PR #1 マージ済み）
+- [x] デプロイ（Cloudflare Workers + Static Assets、1Workerで画面+API配信）
+  - 公開URL: https://next-train-worker.lemoned-i-scream-art-of-noise.workers.dev
+- [ ] APIキー到着後、実データ差し替え（`wrangler secret put ODPT_API_KEY` → 再deploy）
 - [ ] PWA化（Service Worker + Manifest）
-- [ ] デプロイ（Cloudflare）
 
 ## 段階2: カバレッジ拡張（MVP安定後）
 - [ ] 基本ライセンス各社追加
