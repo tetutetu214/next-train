@@ -12,6 +12,13 @@
 - railDirection は事業者により Inbound/Outbound（JR東）と「○○方面」（メトロ）の2系統。生ID表示はガイドライン禁止 → 自然言語名に変換。
 - 承認は最大2営業日。レート制限の公式具体値は不明 → 起動時の駅一覧はキャッシュ前提。
 
+## 実データ接続の知見（2026-06-10 APIキー到着・実データ差し替え）
+- **ODPT の ID は2系統ある（最重要バグ）**: `@id` は `urn:ucode:...` 形式の機械ID、`owl:sameAs` が `odpt.Station:TokyoMetro...` 形式の正規ID。リソース間の参照（`odpt:railway` / `odpt:destinationStation` / `odpt:railDirection` 等）とクエリフィルタ（`odpt:station=` 等）はすべて owl:sameAs 形式。`@id` をキーに辞書を組むと参照解決が全ミスし、路線名が生ID表示・時刻表が空になる。モックは正規ID形式で書かれていたため実データを繋ぐまで発見できなかった。
+- **`odpt:destinationStation` は配列**（`string` ではなく `string[]`）。分割運転を想定した形。モックと旧型定義は文字列前提で誤り。
+- **行先には他社直通駅が大量に含まれる**: 千代田線大手町の行先16種の大半が JR東（我孫子・取手等）・小田急（本厚木・箱根湯本等）。路線フィルタで作る駅名辞書では構造的に解決不可 → 時刻表から行先IDのユニーク集合を集め `odpt:Station?owl:sameAs=ID1,ID2,...`（カンマ区切り・他社駅も可）の1リクエストで辞書を作る方式に変更。
+- **検証手順**: キーは `~/.secrets/next-train.env`、ローカルは `worker/.dev.vars`（gitignore済み）に置いて `wrangler dev` で実データ検証。キー有効性は curl の HTTP ステータスのみで確認（キー本体は画面に出さない）。
+- 変換ロジックは fetch から純関数（`mapStations` / `mapTimetable` / `collectDestinationIds`）に切り出し、`@id` と `owl:sameAs` を意図的に食い違わせたフィクスチャでテスト（22件）。
+
 ## レビュー知見（Codex実装をClaudeがレビュー 2026-06-03）
 - **祝日判定バグ**: `japanese-holidays` の `isHoliday()` は非祝日に `undefined` を返す（`false`ではない）。Codexは `if (isHoliday !== false)` と書いたため平日が全部土休日扱いになっていた。正しくは truthy 判定 `if (holidayName)`。Codexが書いた「平日テスト」がこのバグを検出した（テストの価値の好例）。
 - **フロントで require 禁止**: Vite/ESM環境に `require()` は無い。CommonJSライブラリは `import * as X from '...'` で読み、型定義が無ければ `src/types/*.d.ts` を自作する。
