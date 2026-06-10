@@ -27,8 +27,8 @@
 ## デプロイ構成（2026-06-04）
 - **Cloudflare Workers の Static Assets** 機能で、1つのWorkerが web/dist(画面)と /api(プロキシ)を両方配信。`wrangler.toml` の `[assets] directory="../web/dist" binding="ASSETS"`、`index.ts` は /api 以外を `env.ASSETS.fetch()` にフォールバック。
 - 同一オリジンになるためCORS不要・client の `API_BASE='/api'` のまま本番でも動く。
-- デプロイ: `worker/` で `wrangler deploy`。公開URL https://next-train-worker.lemoned-i-scream-art-of-noise.workers.dev
-- `ODPT_API_KEY` は secret 未設定 → 本番もモック。キー到着後 `wrangler secret put ODPT_API_KEY` して再deployで実データ化。
+- デプロイ: `worker/deploy.sh` 経由（web build→worker test→tsc→wrangler deploy を一括、直叩き禁止運用）。公開URL https://next-train-worker.lemoned-i-scream-art-of-noise.workers.dev
+- `ODPT_API_KEY` は 2026-06-10 に secret 登録済み → 本番は実データ運用中。secret を削除して再deployするとモック表示に戻せる。
 - ロールバック: `wrangler rollback` / ダッシュボードでWorker削除。Freeプラン(10万req/日)で自動課金なし。
 - wrangler v3.x を使用中（v4へのupdate推奨警告が出るが現状動作する）。
 
@@ -46,4 +46,5 @@
 - 2026-06-10 **ODPT の ID 2系統（@id vs owl:sameAs）**: 参照・検索フィルタはすべて owl:sameAs 形式。@id で辞書を組むと解決が全ミスする。モックが正規ID形式だったため実データ接続まで潜伏したバグの構造も理解。
 - 2026-06-10 **行先辞書の直接指定方式**: メトロ時刻表の行先は他社直通駅（JR・小田急等）を含むため、自路線の駅一覧では構造的に解決不可。行先IDのユニーク集合を owl:sameAs カンマ区切りで一括取得する。
 - 2026-06-10 **生IDフォールバックの設計**: ODPTガイドラインで生ID表示は禁止。辞書ミス時の最後の砦として末尾セグメント表示（基本は辞書で日本語名解決）。
+- 2026-06-10 **Workers secret とデプロイの関係**: `wrangler secret put` はキーを Cloudflare 側に暗号化保存して env 注入、deploy はコード/assets を反映。secret は deploy をまたいで永続。Free プランは10万req/日で超過しても自動課金なし、ODPT 側レート制限への配慮が必要。ロールバックは `wrangler rollback`、実データ経路停止は secret 削除+再deploy。
 - 2026-06-04 **prefers-reduced-motion**: OS設定で「動き/アニメを減らす」をONにしているユーザーにだけCSSの動きを止めるアクセシビリティ機構。動きでめまい・頭痛を起こす人（前庭障害等）への健康配慮。ビルド速度・通信量・課金とは無関係。

@@ -24,7 +24,8 @@
 - [x] デプロイ（Cloudflare Workers + Static Assets、1Workerで画面+API配信）
   - 公開URL: https://next-train-worker.lemoned-i-scream-art-of-noise.workers.dev
 - [x] 実データ接続バグ修正（owl:sameAs 統一・destinationStation 配列対応、PR提出）
-- [ ] PRマージ後、本番反映（`wrangler secret put ODPT_API_KEY` → 再deploy）
+- [x] PRマージ後、本番反映（`wrangler secret put ODPT_API_KEY` → `worker/deploy.sh`、2026-06-10 完了）
+- [x] 専用デプロイスクリプト `worker/deploy.sh` 作成（build→test→tsc→deploy、wrangler直叩き禁止運用）
 - [ ] PWA化（Service Worker + Manifest）
 
 ## 段階2: カバレッジ拡張（MVP安定後）
