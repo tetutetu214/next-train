@@ -28,7 +28,9 @@
 - [x] 専用デプロイスクリプト `worker/deploy.sh` 作成（build→test→tsc→deploy、wrangler直叩き禁止運用）
 - [ ] PWA化（Service Worker + Manifest）
 
-## 段階2: カバレッジ拡張（MVP安定後）
+## 段階2: 拡張（MVP安定後、Issue駆動で進める）
+- [ ] 運行情報バナー（TrainInformation）→ Issue #4
+- [ ] 在線情報(odpt:Train)による時刻補正の調査（日中再観測）→ Issue #5
 - [ ] 基本ライセンス各社追加
 - [ ] JR東のデータ提供継続を実機確認 → 学習用途で追加検討
 
