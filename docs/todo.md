@@ -1,7 +1,7 @@
 # next-train TODO (todo.md)
 
 ## 進行中 / 次にやること
-- [ ] てつてつ: ODPT APIキーを申請（developer.odpt.org、最大2営業日）→ `~/.secrets/next-train.env` に保存
+- [x] てつてつ: ODPT APIキーを申請（developer.odpt.org、最大2営業日）→ `~/.secrets/next-train.env` に保存（2026-06-10 到着）
 - [x] plan.md をてつてつと合意
 - [x] spec.md を詳細化して合意
 - [x] 理解度テスト（Workers/Haversine/静的時刻表）全問クリア
@@ -23,7 +23,8 @@
 - [x] 発車標風ダークLEDデザイン（PR #1 マージ済み）
 - [x] デプロイ（Cloudflare Workers + Static Assets、1Workerで画面+API配信）
   - 公開URL: https://next-train-worker.lemoned-i-scream-art-of-noise.workers.dev
-- [ ] APIキー到着後、実データ差し替え（`wrangler secret put ODPT_API_KEY` → 再deploy）
+- [x] 実データ接続バグ修正（owl:sameAs 統一・destinationStation 配列対応、PR提出）
+- [ ] PRマージ後、本番反映（`wrangler secret put ODPT_API_KEY` → 再deploy）
 - [ ] PWA化（Service Worker + Manifest）
 
 ## 段階2: カバレッジ拡張（MVP安定後）
