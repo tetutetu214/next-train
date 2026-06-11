@@ -11,7 +11,7 @@
 - StationTimetable は 駅×railDirection×Calendar(Weekday/SaturdayHoliday) でレコード分割。`stationTimetableObject` 配列に departureTime/destinationStation/trainType。
 - railDirection は事業者により Inbound/Outbound（JR東）と「○○方面」（メトロ）の2系統。生ID表示はガイドライン禁止 → 自然言語名に変換。
 - 承認は最大2営業日。レート制限の公式具体値は不明 → 起動時の駅一覧はキャッシュ前提。
-- **リアルタイム系の提供状況（2026-06-10 夜に通常キーで実測）**: `odpt:TrainInformation`(運行情報) はメトロ全10路線分取得OK→遅延バナーは即実装可能。`odpt:Train`(在線情報・odpt:delay秒) は0件だった（深夜帯の影響かセンター提供対象外かは未確定、日中に再観測すること）。小田急は Railway 3件/Station 13件のマスタのみで時刻表・在線は0件（チャレンジ限定の裏取り）。
+- **リアルタイム系の提供状況（2026-06-10 夜に通常キーで実測）**: `odpt:TrainInformation`(運行情報) はメトロ全10路線分取得OK→遅延バナーは即実装可能。`odpt:Train`(在線情報・odpt:delay秒) は0件だった。2026-06-11(木)22時の再観測でも0件 → 深夜帯説は棄却、センター通常キーでは提供対象外が濃厚（Issue #5、次はチャレンジトークンの現状確認）。小田急は Railway 3件/Station 13件のマスタのみで時刻表・在線は0件（チャレンジ限定の裏取り）。
 
 ## 実データ接続の知見（2026-06-10 APIキー到着・実データ差し替え）
 - **ODPT の ID は2系統ある（最重要バグ）**: `@id` は `urn:ucode:...` 形式の機械ID、`owl:sameAs` が `odpt.Station:TokyoMetro...` 形式の正規ID。リソース間の参照（`odpt:railway` / `odpt:destinationStation` / `odpt:railDirection` 等）とクエリフィルタ（`odpt:station=` 等）はすべて owl:sameAs 形式。`@id` をキーに辞書を組むと参照解決が全ミスし、路線名が生ID表示・時刻表が空になる。モックは正規ID形式で書かれていたため実データを繋ぐまで発見できなかった。
