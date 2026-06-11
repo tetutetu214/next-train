@@ -6,11 +6,14 @@ import type { CalendarType, NextDeparture } from '../types';
 import * as JapaneseHolidays from 'japanese-holidays';
 
 /**
- * 指定日がカレンダー区分 Weekday か SaturdayHoliday かを判定する。
- * 判定ルール:
- * - 土曜 (6) または 日曜 (0) → SaturdayHoliday
- * - 祝日 (japanese-holidays で判定) → SaturdayHoliday
+ * 指定日がカレンダー区分 Weekday / Saturday / Holiday のどれかを判定する。
+ * 都営の一部路線が土曜と日祝を別ダイヤで持つため、土休日を2区分に分けて返す。
+ * 判定ルール（優先順位が重要）:
+ * - 日曜 (0) または 祝日 → Holiday（土曜より日祝を優先）
+ * - 土曜 (6) かつ 祝日でない → Saturday
  * - それ以外 → Weekday
+ *
+ * 「土曜かつ祝日」は Holiday に倒す（日祝ダイヤを優先）。
  *
  * @param date 判定する日付
  * @returns カレンダー区分
@@ -18,16 +21,18 @@ import * as JapaneseHolidays from 'japanese-holidays';
 export function getCalendarType(date: Date): CalendarType {
   const dayOfWeek = date.getDay(); // 0=日, 6=土
 
-  // 土日は土休日ダイヤ
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    return 'SaturdayHoliday';
-  }
-
   // japanese-holidays で祝日判定。
   // 祝日なら祝日名(文字列)、非祝日は undefined が返るため truthy 判定する。
-  const holidayName = JapaneseHolidays.isHoliday(date);
-  if (holidayName) {
-    return 'SaturdayHoliday';
+  const isHoliday = Boolean(JapaneseHolidays.isHoliday(date));
+
+  // 日曜・祝日は日祝ダイヤ（土曜かつ祝日もここに含める）
+  if (dayOfWeek === 0 || isHoliday) {
+    return 'Holiday';
+  }
+
+  // 祝日でない土曜は土曜ダイヤ
+  if (dayOfWeek === 6) {
+    return 'Saturday';
   }
 
   return 'Weekday';

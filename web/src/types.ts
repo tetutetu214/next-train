@@ -1,7 +1,9 @@
 // ===== 共通型定義 =====
 
-/** カレンダー区分: 平日 or 土休日 */
-export type CalendarType = 'Weekday' | 'SaturdayHoliday';
+/** カレンダー区分: 平日 / 土曜 / 日祝。
+ * 都営の一部路線が土曜と日祝で別ダイヤを持つため、土休日を Saturday/Holiday に分割。
+ * メトロ等の2区分路線では worker 側が SaturdayHoliday に丸めて解決する。 */
+export type CalendarType = 'Weekday' | 'Saturday' | 'Holiday';
 
 /** 方向: 上り or 下り */
 export type DirectionType = 'Outbound' | 'Inbound';

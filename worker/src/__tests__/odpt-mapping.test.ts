@@ -12,6 +12,7 @@ import {
   mapStations,
   mapTimetable,
   collectDestinationIds,
+  selectTimetablesByCalendar,
   type RawStation,
   type RawRailway,
   type RawStationTimetable,
@@ -120,6 +121,36 @@ describe('mapStations', () => {
 
     expect(result[0].stationId).toBe(OMOTESANDO_STATION['@id']);
   });
+
+  it('複数事業者の駅と路線辞書が混在しても各事業者の路線名を解決する', () => {
+    // 7社対応で Station/Railway は複数事業者分をまとめて取得するため、
+    // メトロ+都営の混在辞書で両方の路線名が引けることを保証する。
+    const toeiAsakusaRailway: RawRailway = {
+      '@id': 'urn:ucode:_00001C000000000000010000030C0001',
+      'owl:sameAs': 'odpt.Railway:Toei.Asakusa',
+      'dc:title': '都営浅草線',
+      'odpt:ascendingRailDirection': 'odpt.RailDirection:Toei.Nishimagome',
+      'odpt:descendingRailDirection': 'odpt.RailDirection:Toei.Oshiage',
+    };
+    const toeiDaimonStation: RawStation = {
+      '@id': 'urn:ucode:_00001C000000000000010000031C0001',
+      'owl:sameAs': 'odpt.Station:Toei.Asakusa.Daimon',
+      'dc:title': '大門',
+      'geo:lat': 35.6575,
+      'geo:long': 139.7547,
+      'odpt:railway': 'odpt.Railway:Toei.Asakusa',
+    };
+
+    const result = mapStations(
+      [OMOTESANDO_STATION, toeiDaimonStation],
+      [GINZA_RAILWAY, toeiAsakusaRailway]
+    );
+
+    const metro = result.find((s) => s.stationId === OMOTESANDO_STATION['owl:sameAs']);
+    const toei = result.find((s) => s.stationId === toeiDaimonStation['owl:sameAs']);
+    expect(metro?.railwayTitle).toBe('銀座線');
+    expect(toei?.railwayTitle).toBe('都営浅草線');
+  });
 });
 
 describe('mapTimetable', () => {
@@ -127,6 +158,7 @@ describe('mapTimetable', () => {
   const timetables: RawStationTimetable[] = [
     {
       // railDirection は owl:sameAs 形式
+      'odpt:calendar': 'odpt.Calendar:Weekday',
       'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
       'odpt:stationTimetableObject': [
         {
@@ -137,6 +169,7 @@ describe('mapTimetable', () => {
       ],
     },
     {
+      'odpt:calendar': 'odpt.Calendar:Weekday',
       'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Shibuya',
       'odpt:stationTimetableObject': [
         {
@@ -192,6 +225,7 @@ describe('mapTimetable', () => {
   it('destinationStation 未指定の列車は行先不明を返す', () => {
     const noDest: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [{ 'odpt:departureTime': '08:00' }],
       },
@@ -205,6 +239,7 @@ describe('mapTimetable', () => {
   it('trainType 未指定の列車は各停を返す', () => {
     const noType: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [{ 'odpt:departureTime': '08:00' }],
       },
@@ -218,6 +253,7 @@ describe('mapTimetable', () => {
   it('辞書に存在しない行先参照はID末尾セグメントをフォールバック表示する', () => {
     const unknownDest: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -247,6 +283,7 @@ describe('mapTimetable', () => {
     };
     const throughService: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -269,6 +306,7 @@ describe('mapTimetable', () => {
   it('行先が複数要素の配列なら駅名を・で連結する（分割運転）', () => {
     const splitService: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -290,6 +328,7 @@ describe('mapTimetable', () => {
   it('行先が空配列の列車は行先不明を返す', () => {
     const emptyDest: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -345,6 +384,7 @@ describe('collectDestinationIds', () => {
   it('複数レコード・複数列車にまたがる行先IDを重複排除して集める', () => {
     const timetables: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -359,6 +399,7 @@ describe('collectDestinationIds', () => {
         ],
       },
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Shibuya',
         'odpt:stationTimetableObject': [
           {
@@ -380,6 +421,7 @@ describe('collectDestinationIds', () => {
   it('配列の複数行先（分割運転）を個別IDとして展開する', () => {
     const timetables: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [
           {
@@ -404,6 +446,7 @@ describe('collectDestinationIds', () => {
   it('行先未指定の列車はID集合に寄与しない', () => {
     const timetables: RawStationTimetable[] = [
       {
+        'odpt:calendar': 'odpt.Calendar:Weekday',
         'odpt:railDirection': 'odpt.RailDirection:TokyoMetro.Asakusa',
         'odpt:stationTimetableObject': [{ 'odpt:departureTime': '08:00' }],
       },
@@ -412,5 +455,129 @@ describe('collectDestinationIds', () => {
     const result = collectDestinationIds(timetables);
 
     expect(result).toEqual([]);
+  });
+});
+
+describe('selectTimetablesByCalendar', () => {
+  // 1本のダミー列車を載せた時刻表レコードを作るヘルパー。
+  // 採用されたレコードの識別は odpt:calendar / odpt:railDirection で行う。
+  function makeTimetable(
+    calendar: string,
+    direction: string,
+    time: string
+  ): RawStationTimetable {
+    return {
+      'odpt:calendar': calendar,
+      'odpt:railDirection': direction,
+      'odpt:stationTimetableObject': [{ 'odpt:departureTime': time }],
+    };
+  }
+
+  const UP = 'odpt.RailDirection:Toei.A';
+  const DOWN = 'odpt.RailDirection:Toei.B';
+
+  /** 都営型（3区分）: 各方向に Weekday/Saturday/Holiday の3レコード */
+  const threeDivision: RawStationTimetable[] = [
+    makeTimetable('odpt.Calendar:Weekday', UP, '07:00'),
+    makeTimetable('odpt.Calendar:Saturday', UP, '07:30'),
+    makeTimetable('odpt.Calendar:Holiday', UP, '08:00'),
+    makeTimetable('odpt.Calendar:Weekday', DOWN, '07:05'),
+    makeTimetable('odpt.Calendar:Saturday', DOWN, '07:35'),
+    makeTimetable('odpt.Calendar:Holiday', DOWN, '08:05'),
+  ];
+
+  /** メトロ型（2区分）: 各方向に Weekday/SaturdayHoliday の2レコード */
+  const twoDivision: RawStationTimetable[] = [
+    makeTimetable('odpt.Calendar:Weekday', UP, '06:00'),
+    makeTimetable('odpt.Calendar:SaturdayHoliday', UP, '06:30'),
+    makeTimetable('odpt.Calendar:Weekday', DOWN, '06:05'),
+    makeTimetable('odpt.Calendar:SaturdayHoliday', DOWN, '06:35'),
+  ];
+
+  it('都営3区分路線で Saturday は専用の Saturday 区分を方向ごとに選ぶ', () => {
+    const result = selectTimetablesByCalendar(threeDivision, 'Saturday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:Saturday',
+      'odpt.Calendar:Saturday',
+    ]);
+  });
+
+  it('都営3区分路線で Holiday は専用の Holiday 区分を方向ごとに選ぶ', () => {
+    const result = selectTimetablesByCalendar(threeDivision, 'Holiday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:Holiday',
+      'odpt.Calendar:Holiday',
+    ]);
+  });
+
+  it('メトロ2区分路線で Saturday は SaturdayHoliday にフォールバックする', () => {
+    const result = selectTimetablesByCalendar(twoDivision, 'Saturday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:SaturdayHoliday',
+      'odpt.Calendar:SaturdayHoliday',
+    ]);
+  });
+
+  it('メトロ2区分路線で Holiday は SaturdayHoliday にフォールバックする', () => {
+    const result = selectTimetablesByCalendar(twoDivision, 'Holiday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:SaturdayHoliday',
+      'odpt.Calendar:SaturdayHoliday',
+    ]);
+  });
+
+  it('Weekday は平日区分のみを各方向から選び土休日レコードを除外する', () => {
+    const result = selectTimetablesByCalendar(threeDivision, 'Weekday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:Weekday',
+      'odpt.Calendar:Weekday',
+    ]);
+  });
+
+  it('旧クライアントの SaturdayHoliday は2区分路線で SaturdayHoliday を選ぶ', () => {
+    const result = selectTimetablesByCalendar(twoDivision, 'SaturdayHoliday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:SaturdayHoliday',
+      'odpt.Calendar:SaturdayHoliday',
+    ]);
+  });
+
+  it('旧クライアントの SaturdayHoliday は3区分路線では Saturday にフォールバックする', () => {
+    // SaturdayHoliday 区分を持たない3区分路線でも、優先順位の続き（Saturday）で
+    // 土休いずれかのダイヤを返せることを保証する。
+    const result = selectTimetablesByCalendar(threeDivision, 'SaturdayHoliday');
+
+    const calendars = result.map((t) => t['odpt:calendar']);
+    expect(calendars).toEqual([
+      'odpt.Calendar:Saturday',
+      'odpt.Calendar:Saturday',
+    ]);
+  });
+
+  it('要求区分を持たない方向はその方向のレコードを結果から除外する', () => {
+    // 上りは Saturday を持つが、下りは Weekday しか無い混在ケース。
+    // Saturday 要求時、下りはどの優先候補にもヒットせず結果に含まれない。
+    const mixed: RawStationTimetable[] = [
+      makeTimetable('odpt.Calendar:Saturday', UP, '07:30'),
+      makeTimetable('odpt.Calendar:Weekday', DOWN, '07:05'),
+    ];
+
+    const result = selectTimetablesByCalendar(mixed, 'Saturday');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]['odpt:railDirection']).toBe(UP);
+    expect(result[0]['odpt:calendar']).toBe('odpt.Calendar:Saturday');
   });
 });
