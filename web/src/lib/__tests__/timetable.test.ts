@@ -27,14 +27,14 @@ function makeDate(
 }
 
 describe('getCalendarType', () => {
-  it('土曜日は土休日ダイヤを選ぶ', () => {
-    const saturday = makeDate(2024, 1, 6); // 2024-01-06 土曜
-    expect(getCalendarType(saturday)).toBe('SaturdayHoliday');
+  it('祝日でない土曜は土曜ダイヤを選ぶ', () => {
+    const saturday = makeDate(2024, 1, 6); // 2024-01-06 土曜（祝日でない）
+    expect(getCalendarType(saturday)).toBe('Saturday');
   });
 
-  it('日曜日は土休日ダイヤを選ぶ', () => {
+  it('日曜は日祝ダイヤを選ぶ', () => {
     const sunday = makeDate(2024, 1, 7); // 2024-01-07 日曜
-    expect(getCalendarType(sunday)).toBe('SaturdayHoliday');
+    expect(getCalendarType(sunday)).toBe('Holiday');
   });
 
   it('平日（水曜）は平日ダイヤを選ぶ', () => {
@@ -42,16 +42,18 @@ describe('getCalendarType', () => {
     expect(getCalendarType(wednesday)).toBe('Weekday');
   });
 
-  it('祝日（元日）は土休日ダイヤを選ぶ', () => {
-    // 2024-01-01 は元日（日曜でもあるが、祝日として判定されることを確認）
-    const newYear = makeDate(2024, 1, 1); // 2024-01-01 元日
-    expect(getCalendarType(newYear)).toBe('SaturdayHoliday');
+  it('平日の祝日（成人の日・月曜）は日祝ダイヤを選ぶ', () => {
+    // 2024-01-08 は成人の日（月曜）。平日だが祝日なので Holiday
+    const comingOfAge = makeDate(2024, 1, 8);
+    expect(getCalendarType(comingOfAge)).toBe('Holiday');
   });
 
-  it('祝日（成人の日・月曜）は土休日ダイヤを選ぶ', () => {
-    // 2024-01-08 は成人の日（月曜）
-    const comingOfAge = makeDate(2024, 1, 8); // 2024-01-08 成人の日
-    expect(getCalendarType(comingOfAge)).toBe('SaturdayHoliday');
+  it('土曜かつ祝日は土曜より日祝を優先して日祝ダイヤを選ぶ', () => {
+    // 2024-05-04 は土曜（getDay()===6）かつみどりの日（祝日）。
+    // 「土曜かつ祝日でない→Saturday」の条件分岐順序が逆だと Saturday に倒れるため、
+    // 優先順位（日祝が土曜より先）を保証する回帰テスト。
+    const greeneryDayOnSaturday = makeDate(2024, 5, 4);
+    expect(getCalendarType(greeneryDayOnSaturday)).toBe('Holiday');
   });
 });
 

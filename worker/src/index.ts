@@ -54,6 +54,11 @@ export interface RawTimetableObject {
 
 /** ODPT odpt:StationTimetable レコード（生） */
 export interface RawStationTimetable {
+  // odpt:calendar は owl:sameAs 形式の参照値（例 'odpt.Calendar:Weekday'）。
+  // 都営は路線によって Weekday/SaturdayHoliday の2区分か、
+  // Weekday/Saturday/Holiday の3区分かが異なるため、worker 側でこの値を見て
+  // カレンダー優先順位で方向ごとにレコードを選ぶ。
+  'odpt:calendar': string;
   'odpt:railDirection': string;
   'odpt:stationTimetableObject': RawTimetableObject[];
 }
@@ -352,6 +357,130 @@ const MOCK_TRAIN_INFORMATION: TrainInformationResponse[] = [
 /** ODPT API のベースURL */
 const ODPT_BASE = 'https://api.odpt.org/api/v4';
 
+// ===== 対応事業者 =====
+// 通常キーでフル提供（駅座標+時刻表）される7社（計440駅）。
+// odpt:operator= フィルタはカンマ区切りで複数指定でき、
+// 'odpt.Operator:TokyoMetro,odpt.Operator:Toei' のように結合して1リクエストで取得する。
+const SUPPORTED_OPERATORS: string[] = [
+  'odpt.Operator:TokyoMetro', // 東京メトロ（186駅）
+  'odpt.Operator:Toei', // 東京都交通局（149駅）
+  'odpt.Operator:YokohamaMunicipal', // 横浜市交通局（42駅）
+  'odpt.Operator:MIR', // 首都圏新都市鉄道（つくばエクスプレス・20駅）
+  'odpt.Operator:TamaMonorail', // 多摩都市モノレール（19駅）
+  'odpt.Operator:Yurikamome', // ゆりかもめ（16駅）
+  'odpt.Operator:TWR', // 東京臨海高速鉄道（りんかい線・8駅）
+];
+
+/** odpt:operator= に渡すカンマ結合済みの事業者フィルタ値 */
+const SUPPORTED_OPERATORS_FILTER = SUPPORTED_OPERATORS.join(',');
+
+// ===== カレンダー選択 =====
+// API の calendar パラメータは 'Weekday' | 'Saturday' | 'Holiday' の3値。
+// 後方互換のため旧クライアントの 'SaturdayHoliday' も受ける。
+// 1リクエストで calendar フィルタなしに駅+路線の全時刻表を取得し、
+// worker 側で方向ごとに「優先順位の先頭で最初にヒットした区分」を採用する。
+
+/** クライアントから受け取りうるカレンダー値 */
+export type CalendarParam = 'Weekday' | 'Saturday' | 'Holiday' | 'SaturdayHoliday';
+
+/**
+ * 各カレンダー値に対する odpt:calendar 参照値の優先順位。
+ * 先頭から順に探し、最初に存在する区分を採用する。
+ * - Saturday/Holiday は、その専用区分が無い2区分路線では SaturdayHoliday に落ちる。
+ * - 旧 'SaturdayHoliday' は SaturdayHoliday を最優先しつつ、3区分路線でも
+ *   土休いずれかのダイヤを返せるよう Saturday/Holiday もフォールバックに含める。
+ */
+const CALENDAR_PRIORITY: Record<CalendarParam, string[]> = {
+  Weekday: ['odpt.Calendar:Weekday'],
+  Saturday: ['odpt.Calendar:Saturday', 'odpt.Calendar:SaturdayHoliday'],
+  Holiday: ['odpt.Calendar:Holiday', 'odpt.Calendar:SaturdayHoliday'],
+  SaturdayHoliday: [
+    'odpt.Calendar:SaturdayHoliday',
+    'odpt.Calendar:Saturday',
+    'odpt.Calendar:Holiday',
+  ],
+};
+
+/**
+ * 受け取った calendar 文字列を既知の CalendarParam に正規化する。
+ * 未知の値は安全側で 'Weekday' に倒す。
+ *
+ * @param calendar クエリで渡されたカレンダー文字列
+ * @returns 正規化済みカレンダー値
+ */
+export function normalizeCalendarParam(calendar: string): CalendarParam {
+  if (
+    calendar === 'Weekday' ||
+    calendar === 'Saturday' ||
+    calendar === 'Holiday' ||
+    calendar === 'SaturdayHoliday'
+  ) {
+    return calendar;
+  }
+  return 'Weekday';
+}
+
+/**
+ * calendar フィルタなしで取得した時刻表レコード群から、
+ * リクエストされたカレンダー区分に対応するレコードを方向ごとに選ぶ。
+ *
+ * 都営の一部路線は Weekday/Saturday/Holiday の3区分、
+ * メトロ等は Weekday/SaturdayHoliday の2区分でデータを持つ。
+ * そのため calendar 値ごとの優先順位（CALENDAR_PRIORITY）を先頭から辿り、
+ * 「方向ごとに最初にヒットした区分のレコード」を集めて返す。
+ * 方向を跨いだ集約はしない（上り/下りで採用区分が違ってもよい）。
+ *
+ * @param timetables calendar フィルタなしで取得した全時刻表レコード
+ * @param calendar   正規化前のカレンダー文字列（内部で正規化する）
+ * @returns 方向ごとに優先区分で選ばれた時刻表レコード群
+ */
+export function selectTimetablesByCalendar(
+  timetables: RawStationTimetable[],
+  calendar: string
+): RawStationTimetable[] {
+  const priority = CALENDAR_PRIORITY[normalizeCalendarParam(calendar)];
+
+  // 方向（odpt:railDirection）ごとにグルーピングする。
+  const byDirection = new Map<string, RawStationTimetable[]>();
+  for (const tt of timetables) {
+    const dir = tt['odpt:railDirection'];
+    const list = byDirection.get(dir);
+    if (list === undefined) {
+      byDirection.set(dir, [tt]);
+    } else {
+      list.push(tt);
+    }
+  }
+
+  const selected: RawStationTimetable[] = [];
+  for (const list of byDirection.values()) {
+    // 優先順位の先頭から辿り、その区分を持つレコードがあれば全て採用して打ち切る。
+    for (const calendarId of priority) {
+      const matches = list.filter((tt) => tt['odpt:calendar'] === calendarId);
+      if (matches.length > 0) {
+        selected.push(...matches);
+        break;
+      }
+    }
+  }
+
+  return selected;
+}
+
+/**
+ * モックのルックアップキー用にカレンダー値を正規化する。
+ * 既存モックは 'Weekday' | 'SaturdayHoliday' の2キーしか持たないため、
+ * 3値化後の Saturday/Holiday は SaturdayHoliday に寄せて解決する。
+ *
+ * @param calendar 正規化前のカレンダー文字列
+ * @returns モックキー用のカレンダー文字列（'Weekday' | 'SaturdayHoliday'）
+ */
+export function mockCalendarKey(calendar: string): 'Weekday' | 'SaturdayHoliday' {
+  return normalizeCalendarParam(calendar) === 'Weekday'
+    ? 'Weekday'
+    : 'SaturdayHoliday';
+}
+
 // ===== 純関数: ODPT 生レスポンス → アプリのレスポンス形 =====
 // fetch から分離した変換ロジック。単体テスト対象。
 // すべての参照解決は owl:sameAs 形式のキーで行う。
@@ -615,7 +744,8 @@ export function mapTrainInformation(
 async function fetchOdptStations(apiKey: string): Promise<StationResponse[]> {
   const url = new URL(`${ODPT_BASE}/odpt:Station`);
   url.searchParams.set('acl:consumerKey', apiKey);
-  url.searchParams.set('odpt:operator', 'odpt.Operator:TokyoMetro');
+  // 対応7社をカンマ結合で1リクエストにまとめて取得する
+  url.searchParams.set('odpt:operator', SUPPORTED_OPERATORS_FILTER);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -623,10 +753,11 @@ async function fetchOdptStations(apiKey: string): Promise<StationResponse[]> {
   }
   const rawStations = (await res.json()) as RawStation[];
 
-  // 路線IDから路線名を解決するため Railway を別途取得
-  const railwayRes = await fetch(
-    `${ODPT_BASE}/odpt:Railway?acl:consumerKey=${apiKey}&odpt:operator=odpt.Operator:TokyoMetro`
-  );
+  // 路線IDから路線名を解決するため Railway を別途取得（同じく7社分まとめて）
+  const railwayUrl = new URL(`${ODPT_BASE}/odpt:Railway`);
+  railwayUrl.searchParams.set('acl:consumerKey', apiKey);
+  railwayUrl.searchParams.set('odpt:operator', SUPPORTED_OPERATORS_FILTER);
+  const railwayRes = await fetch(railwayUrl.toString());
   const rawRailways = (await railwayRes.json()) as RawRailway[];
 
   return mapStations(rawStations, rawRailways);
@@ -642,23 +773,24 @@ async function fetchOdptTimetable(
   railwayId: string,
   calendar: string
 ): Promise<TimetableResponse> {
-  // カレンダー区分を ODPT の ID 形式に変換
-  const calendarId =
-    calendar === 'Weekday'
-      ? 'odpt.Calendar:Weekday'
-      : 'odpt.Calendar:SaturdayHoliday';
-
+  // calendar フィルタは付けず、駅+路線で全カレンダー区分の時刻表をまとめて取る。
+  // 都営は路線によって 2区分(Weekday/SaturdayHoliday) か
+  // 3区分(Weekday/Saturday/Holiday) かが違うため、区分の選択は
+  // 取得後に selectTimetablesByCalendar で方向ごとに行う。
+  // 方向×区分で最大8件程度になるが許容範囲。
   const url = new URL(`${ODPT_BASE}/odpt:StationTimetable`);
   url.searchParams.set('acl:consumerKey', apiKey);
   url.searchParams.set('odpt:station', stationId);
   url.searchParams.set('odpt:railway', railwayId);
-  url.searchParams.set('odpt:calendar', calendarId);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
     throw new Error(`ODPT API エラー: ${res.status}`);
   }
-  const timetables = (await res.json()) as RawStationTimetable[];
+  const allTimetables = (await res.json()) as RawStationTimetable[];
+
+  // リクエストされたカレンダー区分に対応するレコードを方向ごとに選ぶ
+  const timetables = selectTimetablesByCalendar(allTimetables, calendar);
 
   // Railway 情報から方面名を取得（owl:sameAs でフィルタする点が肝）
   const railwayRes = await fetch(
@@ -682,10 +814,11 @@ async function fetchOdptTimetable(
         ).json()) as RawStation[])
       : [];
 
-  // 列車種別一覧
-  const trainTypeRes = await fetch(
-    `${ODPT_BASE}/odpt:TrainType?acl:consumerKey=${apiKey}&odpt:operator=odpt.Operator:TokyoMetro`
-  );
+  // 列車種別一覧（対応7社分をまとめて取得）
+  const trainTypeUrl = new URL(`${ODPT_BASE}/odpt:TrainType`);
+  trainTypeUrl.searchParams.set('acl:consumerKey', apiKey);
+  trainTypeUrl.searchParams.set('odpt:operator', SUPPORTED_OPERATORS_FILTER);
+  const trainTypeRes = await fetch(trainTypeUrl.toString());
   const trainTypes = (await trainTypeRes.json()) as RawTrainType[];
 
   // 方面（RailDirection）一覧
@@ -713,9 +846,11 @@ async function fetchOdptTimetable(
 async function fetchOdptTrainInformation(
   apiKey: string
 ): Promise<TrainInformationResponse[]> {
+  // 対応7社分の運行情報をまとめて取得（ゆりかもめは提供なし=0件だが、
+  // カンマ結合フィルタに含めても他社の結果に影響しない）
   const url = new URL(`${ODPT_BASE}/odpt:TrainInformation`);
   url.searchParams.set('acl:consumerKey', apiKey);
-  url.searchParams.set('odpt:operator', 'odpt.Operator:TokyoMetro');
+  url.searchParams.set('odpt:operator', SUPPORTED_OPERATORS_FILTER);
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -724,9 +859,10 @@ async function fetchOdptTrainInformation(
   const rawInfos = (await res.json()) as RawTrainInformation[];
 
   // 路線IDから路線名を解決するため Railway を別途取得（mapStations と同パターン）
-  const railwayRes = await fetch(
-    `${ODPT_BASE}/odpt:Railway?acl:consumerKey=${apiKey}&odpt:operator=odpt.Operator:TokyoMetro`
-  );
+  const railwayUrl = new URL(`${ODPT_BASE}/odpt:Railway`);
+  railwayUrl.searchParams.set('acl:consumerKey', apiKey);
+  railwayUrl.searchParams.set('odpt:operator', SUPPORTED_OPERATORS_FILTER);
+  const railwayRes = await fetch(railwayUrl.toString());
   const rawRailways = (await railwayRes.json()) as RawRailway[];
 
   return mapTrainInformation(rawInfos, rawRailways);
@@ -778,8 +914,10 @@ export default {
       }
 
       if (!hasApiKey) {
-        // モックデータのルックアップ
-        const key = `${stationId}:${railwayId}:${calendar}`;
+        // モックデータのルックアップ。
+        // モックは Weekday/SaturdayHoliday の2キーしか持たないため、
+        // 3値化後の Saturday/Holiday は SaturdayHoliday に正規化して引く。
+        const key = `${stationId}:${railwayId}:${mockCalendarKey(calendar)}`;
         const mockFn = MOCK_TIMETABLE_MAP[key];
         if (mockFn !== undefined) {
           return jsonResponse(mockFn());
