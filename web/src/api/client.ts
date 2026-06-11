@@ -1,5 +1,10 @@
 // ===== Workers プロキシ API クライアント =====
-import type { CalendarType, Station, TimetableResponse } from '../types';
+import type {
+  CalendarType,
+  Station,
+  TimetableResponse,
+  TrainInformation,
+} from '../types';
 
 /** LocalStorage キャッシュキー */
 const STATIONS_CACHE_KEY = 'next-train:stations';
@@ -71,4 +76,20 @@ export async function fetchTimetable(
   }
 
   return res.json() as Promise<TimetableResponse>;
+}
+
+/**
+ * 東京メトロの運行情報一覧を Workers プロキシから取得する。
+ * Workers 側でID→路線名の変換と異常判定（statusLabel）が済んだ形を返す。
+ * 失敗してもバナーは補助情報のため、呼び出し側で握り潰して非表示にする想定。
+ *
+ * @returns 運行情報一覧（路線ごと）
+ */
+export async function fetchTrainInformation(): Promise<TrainInformation[]> {
+  const res = await fetch(`${API_BASE}/train-information`);
+  if (!res.ok) {
+    throw new Error(`運行情報の取得に失敗しました (HTTP ${res.status})`);
+  }
+
+  return res.json() as Promise<TrainInformation[]>;
 }

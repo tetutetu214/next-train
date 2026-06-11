@@ -20,6 +20,13 @@
 - **検証手順**: キーは `~/.secrets/next-train.env`、ローカルは `worker/.dev.vars`（gitignore済み）に置いて `wrangler dev` で実データ検証。キー有効性は curl の HTTP ステータスのみで確認（キー本体は画面に出さない）。
 - 変換ロジックは fetch から純関数（`mapStations` / `mapTimetable` / `collectDestinationIds`）に切り出し、`@id` と `owl:sameAs` を意図的に食い違わせたフィクスチャでテスト（22件）。
 
+## 運行情報バナーの設計判断（2026-06-11 Issue #4）
+- **異常判定は `odpt:trainInformationStatus` の有無**: 平常時はフィールド自体が存在しない（2026-06-10 実測）。テキストの文字列マッチ（「平常」を含む等）ではなくフィールド欠落＝平常と判定する方が頑健。
+- 全線共通レコード（`odpt:railway` なし）は路線突き合わせ不能のためバナー対象外。表示中の駅の路線に異常があるときだけ表示し、平常時は DOM 自体を描画しない。
+- 運行情報の取得失敗は静かに非表示（主機能の時刻表表示を阻害しない）。判定は純関数 `filterActiveTrainInformation` に切り出してテスト。
+- 注記は「遅延は反映しません」から「表示時刻は時刻表に基づく・遅延時の時刻補正なし（運行情報は参考表示）」へ実態に合わせて更新。
+- 制約: 運行情報は駅検索時に1回取得するのみ（定期再取得なし）。リアルタイム性を上げるなら再取得間隔の設計が次の論点。
+
 ## レビュー知見（Codex実装をClaudeがレビュー 2026-06-03）
 - **祝日判定バグ**: `japanese-holidays` の `isHoliday()` は非祝日に `undefined` を返す（`false`ではない）。Codexは `if (isHoliday !== false)` と書いたため平日が全部土休日扱いになっていた。正しくは truthy 判定 `if (holidayName)`。Codexが書いた「平日テスト」がこのバグを検出した（テストの価値の好例）。
 - **フロントで require 禁止**: Vite/ESM環境に `require()` は無い。CommonJSライブラリは `import * as X from '...'` で読み、型定義が無ければ `src/types/*.d.ts` を自作する。

@@ -46,6 +46,20 @@ export interface Departure {
   railDirection: string;
 }
 
+/** Workers から返る運行情報レスポンス */
+export interface TrainInformation {
+  /** 路線ID（owl:sameAs 形式）。全線共通レコードは null */
+  railwayId: string | null;
+  /** 路線名 (例: 銀座線)。解決不能・路線参照なしは null */
+  railwayTitle: string | null;
+  /** 異常ステータス (例: 遅延)。平常時は null。バナー表示判定に使う */
+  statusLabel: string | null;
+  /** 運行情報の説明文 */
+  infoText: string;
+  /** 情報時刻 (ISO 8601) */
+  date: string;
+}
+
 /** Workers から返る方面別時刻表レスポンス */
 export interface TimetableResponse {
   /** 駅ID */

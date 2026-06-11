@@ -1,9 +1,14 @@
 // ===== メインアプリコンポーネント =====
 import { useState, useEffect, useCallback } from 'react';
-import type { Station, TimetableResponse } from './types';
+import type { Station, TimetableResponse, TrainInformation } from './types';
 import { getCurrentPosition, filterNearbyStations } from './lib/geo';
 import { getCalendarType } from './lib/timetable';
-import { fetchStations, fetchTimetable } from './api/client';
+import { filterActiveTrainInformation } from './lib/trainInformation';
+import {
+  fetchStations,
+  fetchTimetable,
+  fetchTrainInformation,
+} from './api/client';
 import { StationCard } from './components/StationCard';
 import './App.css';
 
@@ -29,6 +34,8 @@ export default function App() {
   const [nearbyStations, setNearbyStations] = useState<Station[]>([]);
   const [timetables, setTimetables] = useState<Map<string, TimetableResponse>>(new Map());
   const [loadingTimetables, setLoadingTimetables] = useState<Set<string>>(new Set());
+  // 運行情報（路線ごと）。バナー表示判定に使う
+  const [trainInfos, setTrainInfos] = useState<TrainInformation[]>([]);
   const [now, setNow] = useState(() => new Date());
 
   // 1分ごとに現在時刻を更新（「あと何分」の再計算のため）
@@ -56,6 +63,16 @@ export default function App() {
           MAX_STATIONS
         );
         setNearbyStations(nearby);
+
+        // 運行情報を取得（バナー表示用）。
+        // 主機能（時刻表表示）を阻害しないよう、失敗しても静かに非表示にする。
+        try {
+          const infos = await fetchTrainInformation();
+          setTrainInfos(infos);
+        } catch (infoErr) {
+          console.error('運行情報の取得に失敗しました', infoErr);
+          setTrainInfos([]);
+        }
 
         // 各駅の時刻表を並行取得
         const calendar = getCalendarType(new Date());
@@ -119,8 +136,12 @@ export default function App() {
       setLocationState({ status: 'idle' });
       setNearbyStations([]);
       setTimetables(new Map());
+      setTrainInfos([]);
     }
   }, [isDemoMode, locateAndFilter]);
+
+  // 表示中の駅の路線に異常がある運行情報だけを抽出（平常時は空 → バナー非表示）
+  const activeTrainInfos = filterActiveTrainInformation(trainInfos, nearbyStations);
 
   return (
     <div className="app">
@@ -178,6 +199,24 @@ export default function App() {
         </div>
       )}
 
+      {/* 運行情報バナー（表示駅の路線に異常があるときだけ出す） */}
+      {activeTrainInfos.length > 0 && (
+        <div className="train-info-banner" role="status">
+          {activeTrainInfos.map((info) => (
+            <p key={`${info.railwayId ?? ''}:${info.date}`} className="train-info-line">
+              <span className="train-info-icon" aria-hidden="true">
+                ⚠
+              </span>
+              <span className="train-info-railway">{info.railwayTitle}</span>
+              <span className="train-info-status">{info.statusLabel}</span>
+              {info.infoText !== '' && (
+                <span className="train-info-text">— {info.infoText}</span>
+              )}
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* 近傍駅リスト */}
       <main className="stations-list">
         {locationState.status === 'located' && nearbyStations.length === 0 && (
@@ -207,7 +246,7 @@ export default function App() {
           出典: 東京メトロ (CC BY 4.0) / 公共交通オープンデータセンター
         </p>
         <p className="disclaimer">
-          ※時刻表データです。遅延は反映しません
+          ※表示時刻は時刻表に基づきます。遅延時の時刻補正はしていません（運行情報は参考表示）
         </p>
       </footer>
     </div>

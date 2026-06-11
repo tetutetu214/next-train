@@ -114,6 +114,60 @@
   transform: scale(0.97);
 }
 
+/* ===== 運行情報バナー（控えめな琥珀系の警告表示） ===== */
+.train-info-banner {
+  margin-bottom: 12px;
+  padding: 10px 13px;
+  border: 1px solid var(--amber-dim);
+  border-left: 3px solid var(--amber);
+  border-radius: 6px;
+  background: rgba(255, 176, 31, 0.06);
+  /* 発車標らしく、出現時にそっと点灯する */
+  animation: banner-in 0.35s ease both;
+}
+.train-info-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--amber-dim);
+}
+.train-info-line + .train-info-line {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line-soft);
+}
+.train-info-icon {
+  color: var(--amber);
+  text-shadow: 0 0 8px var(--amber-glow);
+}
+.train-info-railway {
+  color: var(--white);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.train-info-status {
+  color: var(--amber);
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--amber-glow);
+}
+.train-info-text {
+  color: var(--grey);
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ===== 駅リスト ===== */
 .stations-list {
   display: flex;
@@ -295,6 +349,9 @@
 /* ===== モーション抑制設定の尊重 ===== */
 @media (prefers-reduced-motion: reduce) {
   .station-card {
+    animation: none;
+  }
+  .train-info-banner {
     animation: none;
   }
 }
