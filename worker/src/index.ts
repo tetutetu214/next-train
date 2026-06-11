@@ -72,6 +72,32 @@ export interface RawRailDirection {
   'dc:title': string;
 }
 
+/**
+ * 多言語テキスト（ja/en）。
+ * odpt:trainInformationText は実データではこのオブジェクト形だが、
+ * 古い仕様・他事業者では素の文字列のこともあるため両対応にする。
+ */
+export type LocalizedText = string | { ja?: string; en?: string };
+
+/**
+ * ODPT odpt:TrainInformation レコード（生）。
+ * 2026-06-10 実測形:
+ *   - 平常時は odpt:trainInformationStatus フィールド自体が存在しない
+ *   - 異常時のみ odpt:trainInformationStatus（例 {"ja":"遅延"}）が付く
+ *   - odpt:railway が無い「全線共通」レコードが来る可能性がある（undefined 許容）
+ */
+export interface RawTrainInformation {
+  '@id': string;
+  'owl:sameAs'?: string;
+  'dc:date': string;
+  // owl:sameAs 形式の路線参照。全線共通レコードでは欠落しうる
+  'odpt:railway'?: string;
+  // 異常時のみ存在。これを異常判定に使う
+  'odpt:trainInformationStatus'?: LocalizedText;
+  // 平常時も入る説明文。オブジェクト/文字列両対応
+  'odpt:trainInformationText'?: LocalizedText;
+}
+
 /** 駅情報（レスポンス型） */
 export interface StationResponse {
   stationId: string;
@@ -99,6 +125,21 @@ export interface TimetableResponse {
   inbound: DepartureResponse[];
   outboundDirectionName: string;
   inboundDirectionName: string;
+}
+
+/** 運行情報レスポンス型 */
+export interface TrainInformationResponse {
+  // owl:sameAs 形式の路線ID。全線共通レコードでは null
+  railwayId: string | null;
+  // 路線名。Railway 辞書で解決。解決不能・路線参照なしは null
+  railwayTitle: string | null;
+  // 異常ステータス（例 '遅延'）。平常時（フィールド欠落）は null。
+  // フロントはこの値の non-null でバナー表示有無を判定する
+  statusLabel: string | null;
+  // 運行情報の説明文（平常時は「現在、平常どおり運転しています。」等）
+  infoText: string;
+  // 情報時刻（dc:date をそのまま引き継ぐ）
+  date: string;
 }
 
 // ===== CORS ヘッダー =====
@@ -285,6 +326,26 @@ const MOCK_TIMETABLE_MAP: Record<string, () => TimetableResponse> = {
   'odpt.Station:TokyoMetro.Chiyoda.Omotesando:odpt.Railway:TokyoMetro.Chiyoda:SaturdayHoliday':
     getMockChiyodaOmotesandoHoliday,
 };
+
+/** モック: 運行情報。
+ * モック駅は銀座線・千代田線なので、開発時にバナーが見えるよう
+ * 銀座線=平常（statusLabel null）・千代田線=遅延（statusLabel '遅延'）の2件を返す。 */
+const MOCK_TRAIN_INFORMATION: TrainInformationResponse[] = [
+  {
+    railwayId: 'odpt.Railway:TokyoMetro.Ginza',
+    railwayTitle: '銀座線',
+    statusLabel: null,
+    infoText: '現在、平常どおり運転しています。',
+    date: '2026-06-10T12:00:00+09:00',
+  },
+  {
+    railwayId: 'odpt.Railway:TokyoMetro.Chiyoda',
+    railwayTitle: '千代田線',
+    statusLabel: '遅延',
+    infoText: '人身事故の影響で、一部列車に遅れがでています。',
+    date: '2026-06-10T12:00:00+09:00',
+  },
+];
 
 // ===== ODPT API 連携（APIキー設定済み時） =====
 
@@ -485,6 +546,66 @@ export function mapTimetable(params: {
   };
 }
 
+/**
+ * 多言語テキスト（文字列 or {ja,en} オブジェクト）から日本語表記を取り出す。
+ * - 文字列ならそのまま返す
+ * - オブジェクトなら ja を優先（無ければ空文字）
+ * - undefined は空文字
+ *
+ * @param text odpt:trainInformationText / odpt:trainInformationStatus の値
+ * @returns 日本語テキスト（無ければ空文字）
+ */
+function localizedJa(text: LocalizedText | undefined): string {
+  if (text === undefined) {
+    return '';
+  }
+  if (typeof text === 'string') {
+    return text;
+  }
+  return text.ja ?? '';
+}
+
+/**
+ * ODPT の TrainInformation/Railway 生レコード群をアプリの運行情報レスポンスに変換する。
+ * - 路線名は odpt:railway（owl:sameAs 形式）を Railway 辞書で解決する（mapStations と同じパターン）。
+ * - statusLabel は odpt:trainInformationStatus の ja。平常時はフィールド自体が無いため null。
+ *   フロントはこの null/非null でバナー表示有無を判定する。
+ * - odpt:railway が欠落する全線共通レコードは railwayId / railwayTitle を null にする。
+ *
+ * @param rawInfos    運行情報レコード一覧
+ * @param rawRailways 路線レコード一覧（路線名の解決に使う）
+ * @returns 整形済み運行情報レスポンス一覧
+ */
+export function mapTrainInformation(
+  rawInfos: RawTrainInformation[],
+  rawRailways: RawRailway[]
+): TrainInformationResponse[] {
+  // owl:sameAs（正規路線ID）→ 路線名 の辞書（@id は使わない）
+  const railwayTitleMap = new Map(
+    rawRailways.map((r) => [canonicalId(r), r['dc:title']])
+  );
+
+  return rawInfos.map((info) => {
+    const railwayRef = info['odpt:railway'];
+    // odpt:trainInformationStatus が存在するときのみ異常扱い。
+    // 平常時はフィールド自体が無いので statusLabel は null になる。
+    const statusJa = localizedJa(info['odpt:trainInformationStatus']);
+
+    return {
+      railwayId: railwayRef ?? null,
+      // 路線参照があれば辞書解決（ヒットしなければ参照値をそのまま）、無ければ null
+      railwayTitle:
+        railwayRef !== undefined
+          ? (railwayTitleMap.get(railwayRef) ?? railwayRef)
+          : null,
+      // status フィールド欠落・空文字なら平常とみなし null
+      statusLabel: statusJa !== '' ? statusJa : null,
+      infoText: localizedJa(info['odpt:trainInformationText']),
+      date: info['dc:date'],
+    };
+  });
+}
+
 // ===== fetch ラッパー: データ取得して純関数を呼ぶだけ =====
 
 /**
@@ -585,6 +706,32 @@ async function fetchOdptTimetable(
   });
 }
 
+/**
+ * ODPT API から東京メトロの運行情報を取得して整形する。
+ * 取得処理のみを担い、変換は mapTrainInformation に委譲する。
+ */
+async function fetchOdptTrainInformation(
+  apiKey: string
+): Promise<TrainInformationResponse[]> {
+  const url = new URL(`${ODPT_BASE}/odpt:TrainInformation`);
+  url.searchParams.set('acl:consumerKey', apiKey);
+  url.searchParams.set('odpt:operator', 'odpt.Operator:TokyoMetro');
+
+  const res = await fetch(url.toString());
+  if (!res.ok) {
+    throw new Error(`ODPT API エラー: ${res.status}`);
+  }
+  const rawInfos = (await res.json()) as RawTrainInformation[];
+
+  // 路線IDから路線名を解決するため Railway を別途取得（mapStations と同パターン）
+  const railwayRes = await fetch(
+    `${ODPT_BASE}/odpt:Railway?acl:consumerKey=${apiKey}&odpt:operator=odpt.Operator:TokyoMetro`
+  );
+  const rawRailways = (await railwayRes.json()) as RawRailway[];
+
+  return mapTrainInformation(rawInfos, rawRailways);
+}
+
 // ===== Workers エントリーポイント =====
 
 export default {
@@ -657,6 +804,22 @@ export default {
           calendar
         );
         return jsonResponse(timetable);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '不明なエラー';
+        return errorResponse(`ODPT API エラー: ${message}`, 502);
+      }
+    }
+
+    // ===== /api/train-information =====
+    if (url.pathname === '/api/train-information') {
+      if (!hasApiKey) {
+        // APIキー未設定: モックの運行情報を返す（銀座線=平常・千代田線=遅延）
+        return jsonResponse(MOCK_TRAIN_INFORMATION);
+      }
+
+      try {
+        const info = await fetchOdptTrainInformation(env.ODPT_API_KEY);
+        return jsonResponse(info);
       } catch (err) {
         const message = err instanceof Error ? err.message : '不明なエラー';
         return errorResponse(`ODPT API エラー: ${message}`, 502);

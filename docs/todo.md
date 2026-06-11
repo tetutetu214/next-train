@@ -29,7 +29,7 @@
 - [ ] PWA化（Service Worker + Manifest）
 
 ## 段階2: 拡張（MVP安定後、Issue駆動で進める）
-- [ ] 運行情報バナー（TrainInformation）→ Issue #4
+- [ ] 運行情報バナー（TrainInformation）→ Issue #4（実装済み・PR レビュー待ち。マージ後 worker/deploy.sh で本番反映）
 - [ ] 在線情報(odpt:Train)による時刻補正の調査（日中再観測）→ Issue #5
 - [ ] 基本ライセンス各社追加
 - [ ] JR東のデータ提供継続を実機確認 → 学習用途で追加検討
