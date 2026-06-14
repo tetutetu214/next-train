@@ -1,6 +1,7 @@
 // ===== 駅×路線カードコンポーネント =====
 import type { Station, TimetableResponse } from '../types';
 import { getNextDeparture } from '../lib/timetable';
+import { FlapText } from './FlapText';
 
 interface StationCardProps {
   /** 駅情報 */
@@ -21,6 +22,23 @@ function formatMinutesUntil(minutesUntil: number | 'ended'): string {
   if (minutesUntil === 'ended') return '終電を過ぎました';
   if (minutesUntil < 1) return 'まもなく';
   return `あと${minutesUntil}分`;
+}
+
+function renderMinutesUntil(minutesUntil: number | 'ended') {
+  const minutesText = formatMinutesUntil(minutesUntil);
+  const match = /^あと(\d+)分$/.exec(minutesText);
+
+  if (match === null) {
+    return minutesText;
+  }
+
+  return (
+    <>
+      あと
+      <FlapText text={match[1]} className="minutes-flap" />
+      分
+    </>
+  );
 }
 
 /**
@@ -77,17 +95,25 @@ function DirectionBlock({
   }
 
   return (
-    <div className="direction-block">
+    <div className={`direction-block ${variantClass}`}>
       <span className="direction-label">{label}</span>
       <span className="direction-name">{directionName}</span>
-      <span className="departure-time">{next.time}</span>
+      <span className="departure-time">
+        {/* この分岐は minutesUntil === 'ended' を上で除外済みのため time は非null。
+            型上は string | null なので念のため空文字へフォールバック（FlapText が空白に正規化）。 */}
+        <FlapText text={next.time ?? ''} />
+      </span>
       {next.destination !== undefined && (
-        <span className="destination">{next.destination}</span>
+        <span className="destination vertical-flip" key={next.destination}>
+          {next.destination}
+        </span>
       )}
       {next.trainType !== undefined && (
-        <span className="train-type">{next.trainType}</span>
+        <span className="train-type vertical-flip" key={next.trainType}>
+          {next.trainType}
+        </span>
       )}
-      <span className="minutes-until">{formatMinutesUntil(next.minutesUntil)}</span>
+      <span className="minutes-until">{renderMinutesUntil(next.minutesUntil)}</span>
     </div>
   );
 }

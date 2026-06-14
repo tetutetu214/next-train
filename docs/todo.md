@@ -28,6 +28,11 @@
 - [x] 専用デプロイスクリプト `worker/deploy.sh` 作成（build→test→tsc→deploy、wrangler直叩き禁止運用）
 - [ ] PWA化（Service Worker + Manifest）
 
+## 実験: スプリットフラップ表示（feature/split-flap-display ブランチ、mainには未マージ）
+- [x] 発車時刻と「あと◯分」を反転フラップ風UIに変更（FlapDigit/FlapText、純CSS rotateX）
+- [x] 行先・種別は値変更時の縦フリップ、prefers-reduced-motion 尊重、型/lint/テスト通過
+- 評価: 値変更時しかめくれない仕様＋固定デモデータのため見た目変化が乏しく「使えない」判断。ブランチに保留（PR未作成）。再強化するなら「全桁シャッフル着地（空港ソラリ board 風）」が候補。
+
 ## 段階2: 拡張（MVP安定後、Issue駆動で進める）
 - [x] 運行情報バナー（TrainInformation）→ Issue #4 / PR #6 マージ・本番反映済み（2026-06-11）
 - [x] 在線情報(odpt:Train)の調査 → Issue #5 クローズ（センターキー提供なし・チャレンジ終了で現状不可）

@@ -1,0 +1,165 @@
+.flap-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08em;
+  color: inherit;
+  font-family: var(--led);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.flap-digit {
+  --flap-card-bg: #141821;
+  --flap-card-edge: rgba(255, 255, 255, 0.1);
+  --flap-card-shadow: rgba(0, 0, 0, 0.42);
+
+  position: relative;
+  display: inline-block;
+  width: 0.78em;
+  height: 1.12em;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 46%),
+    var(--flap-card-bg);
+  box-shadow:
+    0 1px 0 var(--flap-card-edge) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.34) inset,
+    0 3px 8px var(--flap-card-shadow);
+  color: inherit;
+  font-family: var(--led);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.12em;
+  perspective: 7em;
+  text-align: center;
+  text-shadow: none;
+  vertical-align: middle;
+}
+
+.flap-digit::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: calc(50% - 1px);
+  z-index: 5;
+  height: 2px;
+  border-top: 1px solid rgba(0, 0, 0, 0.78);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.flap-panel {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 50%;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--flap-card-bg);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.flap-panel span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: block;
+  height: 1.12em;
+}
+
+.flap-top {
+  top: 0;
+  transform-origin: bottom;
+}
+
+.flap-top span {
+  top: 0;
+}
+
+.flap-bottom {
+  bottom: 0;
+  transform-origin: top;
+}
+
+.flap-bottom span {
+  bottom: 0;
+}
+
+.flap-top-previous,
+.flap-bottom-next {
+  z-index: 4;
+  visibility: hidden;
+}
+
+.flap-digit--animating .flap-top-previous,
+.flap-digit--animating .flap-bottom-next {
+  visibility: visible;
+}
+
+.flap-digit--animating .flap-top-previous {
+  animation: flap-top-out 260ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.flap-digit--animating .flap-bottom-next {
+  animation: flap-bottom-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1) 250ms both;
+  transform: rotateX(90deg);
+}
+
+.flap-digit-reader {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.flap-digit--fixed {
+  width: auto;
+  min-width: 0.32em;
+  height: 1.12em;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.12em;
+  overflow: visible;
+}
+
+.flap-digit--fixed::after {
+  content: none;
+}
+
+@keyframes flap-top-out {
+  from {
+    filter: brightness(1);
+    transform: rotateX(0deg);
+  }
+  to {
+    filter: brightness(0.62);
+    transform: rotateX(-90deg);
+  }
+}
+
+@keyframes flap-bottom-in {
+  from {
+    filter: brightness(0.62);
+    transform: rotateX(90deg);
+  }
+  to {
+    filter: brightness(1);
+    transform: rotateX(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flap-digit--animating .flap-top-previous,
+  .flap-digit--animating .flap-bottom-next {
+    animation: none;
+    visibility: hidden;
+  }
+}

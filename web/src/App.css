@@ -23,14 +23,14 @@
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--amber);
-  text-shadow: 0 0 12px var(--amber-glow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
 }
 
 /* タイトル頭の発車標マーク */
 .app-header h1::before {
   content: '▸ ';
   color: var(--green);
-  text-shadow: 0 0 8px var(--green-glow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
 }
 
 .refresh-button {
@@ -49,7 +49,7 @@
 }
 .refresh-button:hover:not(:disabled) {
   border-color: var(--amber);
-  box-shadow: 0 0 12px var(--amber-glow);
+  box-shadow: 0 0 0 1px rgba(255, 176, 31, 0.2);
 }
 .refresh-button:disabled {
   opacity: 0.45;
@@ -107,7 +107,9 @@
   border-radius: 8px;
   padding: 15px 24px;
   cursor: pointer;
-  box-shadow: 0 0 20px var(--amber-glow);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 6px 14px rgba(0, 0, 0, 0.32);
   transition: transform 0.15s;
 }
 .get-location-button:active {
@@ -141,7 +143,7 @@
 }
 .train-info-icon {
   color: var(--amber);
-  text-shadow: 0 0 8px var(--amber-glow);
+  text-shadow: none;
 }
 .train-info-railway {
   color: var(--white);
@@ -151,7 +153,7 @@
 .train-info-status {
   color: var(--amber);
   font-weight: 700;
-  text-shadow: 0 0 8px var(--amber-glow);
+  text-shadow: none;
 }
 .train-info-text {
   color: var(--grey);
@@ -231,7 +233,7 @@
 .station-mark {
   color: var(--green);
   font-size: 11px;
-  text-shadow: 0 0 8px var(--green-glow);
+  text-shadow: none;
 }
 .station-name {
   color: var(--white);
@@ -270,12 +272,19 @@
 }
 /* あと何分：1行目の右端へ */
 .minutes-until {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
   order: 2;
   margin-left: auto;
   font-size: 14px;
   font-weight: 700;
   color: var(--white);
   font-variant-numeric: tabular-nums;
+}
+.minutes-flap {
+  font-size: 1.05em;
+  color: inherit;
 }
 /* 発車時刻：2行目の主役(大きいLED数字) */
 .departure-time {
@@ -287,6 +296,9 @@
   line-height: 1.05;
   letter-spacing: 0.03em;
   font-variant-numeric: tabular-nums;
+}
+.departure-time .flap-text {
+  gap: 0.1em;
 }
 .train-type {
   order: 4;
@@ -300,6 +312,10 @@
   order: 5;
   font-size: 13px;
   color: var(--grey);
+}
+.vertical-flip {
+  transform-origin: center;
+  animation: vertical-flip-in 0.34s ease both;
 }
 /* ステータス文言(取得中・終電後・データなし) */
 .status-text {
@@ -315,7 +331,7 @@
 .direction-block--up .direction-label,
 .direction-block--up .departure-time {
   color: var(--amber);
-  text-shadow: 0 0 11px var(--amber-glow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
 }
 .direction-block--up .direction-name {
   color: var(--amber-dim);
@@ -325,7 +341,7 @@
 .direction-block--down .direction-label,
 .direction-block--down .departure-time {
   color: var(--green);
-  text-shadow: 0 0 11px var(--green-glow);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
 }
 .direction-block--down .direction-name {
   color: var(--green-dim);
@@ -346,12 +362,26 @@
   color: #6f5e3c;
 }
 
+@keyframes vertical-flip-in {
+  from {
+    opacity: 0.72;
+    transform: rotateX(-90deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateX(0deg);
+  }
+}
+
 /* ===== モーション抑制設定の尊重 ===== */
 @media (prefers-reduced-motion: reduce) {
   .station-card {
     animation: none;
   }
   .train-info-banner {
+    animation: none;
+  }
+  .vertical-flip {
     animation: none;
   }
 }
