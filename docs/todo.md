@@ -1,5 +1,9 @@
 # next-train TODO (todo.md)
 
+## 次の一手 <!-- next-move: 2026-07-12 -->
+- PWA化（Service Worker + Manifest。Codex委譲向き）
+- JR東データ提供継続の実機確認とライセンス確認
+
 ## 進行中 / 次にやること
 - [x] てつてつ: ODPT APIキーを申請（developer.odpt.org、最大2営業日）→ `~/.secrets/next-train.env` に保存（2026-06-10 到着）
 - [x] plan.md をてつてつと合意
